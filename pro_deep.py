@@ -468,7 +468,9 @@ def embed_image_with_dino(image_path, model=None, processor=None, device=None, p
     if model is None or processor is None:
         model, processor = get_frozen_model(device=device)
 
-    image = Image.open(image_path).convert("RGB")
+    # Accept either a path or an already loaded PIL image
+    image = image_path if isinstance(image_path, Image.Image) else Image.open(image_path)
+    image = image.convert("RGB")
     inputs = processor(images=image, return_tensors="pt").to(device)
 
     with torch.no_grad():
