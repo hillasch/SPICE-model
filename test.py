@@ -11,7 +11,7 @@ model = train_edit_model(
     epochs=1,
     lr=1e-4,
     max_samples=10,  # optional subset
-    progress_every=100,  # log roughly every 10 steps
+    progress_every=10,  # log roughly every 10 steps
     progress_every_seconds=15,  # or every 15s, whichever comes first
 )
 model.save_pretrained("edit_model_final")
