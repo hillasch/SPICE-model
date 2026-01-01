@@ -8,7 +8,14 @@ import torch
 
 from diffusion_edit import ImageTextDiffusionConfig, ImageTextDiffusionPipeline
 from pro_deep import preview_model_predictions, train_edit_model
-
+##### to apply the test.py script for comparing diffusion results with your trained model, run:
+#python test.py --mode compare \
+#  --csv-path final_dataset_clean.csv \
+#  --num-samples 3 \
+#  --save-comparisons eval_previews/diffusion_triplets \
+#  --no-show \
+#  --guidance-scale 7.5 --strength 0.6 --image-cond-scale 1.0 --image-tokens 4 --num-steps 30
+##############################################################################################
 
 def run_training(args):
     run_start = time.time()
