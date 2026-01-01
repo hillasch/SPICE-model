@@ -10,8 +10,8 @@ model = train_edit_model(
     batch_size=1,
     epochs=2,
     lr=1e-4,
-    max_samples=100,  # optional subset
-    progress_every=10,  # log roughly every 10 steps
+    max_samples=1000,  # optional subset
+    progress_every=100,  # log roughly every 10 steps
     progress_every_seconds=15,  # or every 15s, whichever comes first
 )
 model.save_pretrained("edit_model_final")
@@ -23,7 +23,7 @@ print(f"Training script finished in {elapsed/60:.2f}m ({elapsed:.1f}s)")
 preview_model_predictions(
     model,
     csv_path=Path("final_dataset_clean.csv"),
-    samples_to_show=3,
+    samples_to_show=5,
     save_dir=Path("eval_previews"),
     show=False,  # set True to pop up matplotlib windows
 )
