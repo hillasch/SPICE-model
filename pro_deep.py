@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
+import time
 
 try:
     from tqdm import tqdm
@@ -37,6 +38,20 @@ DEFAULT_REPO_DIR = BASE_DIR / REPO_NAME
 DEFAULT_OUTPUT_CSV = BASE_DIR / "final_dataset_clean.csv"
 DEFAULT_IMAGES_DIR = BASE_DIR / "images"
 DEFAULT_MAX_WORKERS = 10
+
+
+def format_duration(seconds: float) -> str:
+    """Return a compact human-readable duration like '1h 05m 07s'."""
+    seconds = int(round(seconds))
+    mins, secs = divmod(seconds, 60)
+    hours, mins = divmod(mins, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours}h")
+    if hours or mins:
+        parts.append(f"{mins:02d}m")
+    parts.append(f"{secs:02d}s")
+    return " ".join(parts)
 
 
 def get_filename(path_or_url: Optional[str]) -> Optional[str]:
@@ -456,6 +471,8 @@ def train_edit_model(
     dropout: float = 0.1,
     num_workers: int = 0,
     max_samples: int = None,
+    progress_every: int = 25,
+    progress_every_seconds: int = 30,
     device=None,
 ):
     """
@@ -463,6 +480,11 @@ def train_edit_model(
     """
     device = device or get_device()
     csv_path = Path(csv_path)
+
+    # Simple run counter + timer so repeated calls are labeled and timed.
+    run_id = getattr(train_edit_model, "_run_counter", 0) + 1
+    train_edit_model._run_counter = run_id
+    run_start = time.time()
 
     needs_build = False
     if not csv_path.exists():
@@ -506,10 +528,21 @@ def train_edit_model(
     model = TextGuidedDelta(d_img=d_img, d_txt=d_txt, hidden=hidden, dropout=dropout).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 
+    print(
+        f"[Run {run_id}] Starting training with {len(dataset)} samples, "
+        f"batch_size={batch_size}, epochs={epochs}"
+    )
+    global_start = time.time()
+    total_steps = epochs * len(loader)
+    global_step = 0
+    log_every = max(1, min(len(loader), progress_every))
+    last_log = run_start
+
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
-        for x, t, x_tgt in loader:
+        epoch_start = time.time()
+        for step_idx, (x, t, x_tgt) in enumerate(loader, 1):
             x = x.to(device)
             t = t.to(device)
             x_tgt = x_tgt.to(device)
@@ -522,9 +555,35 @@ def train_edit_model(
             optimizer.step()
 
             total_loss += loss.item() * x.size(0)
+            global_step += 1
+
+            now = time.time()
+            should_log = (
+                step_idx % log_every == 0
+                or global_step == total_steps
+                or (now - last_log) >= progress_every_seconds
+            )
+
+            if should_log:
+                elapsed = now - run_start
+                remaining_steps = total_steps - global_step
+                avg_step = elapsed / max(global_step, 1)
+                eta_secs = max(0.0, avg_step * remaining_steps)
+                last_log = now
+                print(
+                    f"[Run {run_id}] Epoch {epoch+1}/{epochs} step {step_idx}/{len(loader)} "
+                    f"loss={loss.item():.4f} ETA {format_duration(eta_secs)}"
+                )
 
         avg_loss = total_loss / len(dataset)
-        print(f"Epoch {epoch+1}/{epochs} - train_loss={avg_loss:.4f}")
+        epoch_secs = time.time() - epoch_start
+        total_secs = time.time() - global_start
+        print(
+            f"[Run {run_id}] Epoch {epoch+1}/{epochs} - train_loss={avg_loss:.4f} "
+            f"- epoch_time={epoch_secs:.1f}s - total_time={total_secs/60:.1f}m"
+        )
+
+    print(f"[Run {run_id}] Completed in {format_duration(time.time() - run_start)}")
 
     return model
 
