@@ -13,7 +13,7 @@ import argparse
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from urllib.parse import unquote
 
 import pandas as pd
@@ -272,6 +272,105 @@ def show_dataset_samples(csv_path: Path, samples_to_show: int = 3) -> None:
             print(f"Error displaying image for {row['filename']}: {exc}")
 
 
+def preview_model_predictions(
+    model: nn.Module,
+    csv_path: Path,
+    samples_to_show: int = 3,
+    save_dir: Optional[Path] = None,
+    show: bool = True,
+    device=None,
+):
+    """
+    Visualize how the trained model edits embeddings by comparing predicted vs target images.
+    This does NOT generate new images; it shows the source and ground-truth target images while
+    reporting the L2 distance between the model's predicted embedding and the target embedding.
+    """
+    try:
+        from PIL import Image
+        import matplotlib.pyplot as plt
+        import textwrap
+    except ImportError as exc:
+        print(f"Install pillow and matplotlib to display previews ({exc}).")
+        return
+
+    device = device or get_device()
+    model = model.to(device).eval()
+
+    csv_path = Path(csv_path)
+    if not csv_path.exists():
+        print(f"CSV file not found at {csv_path}")
+        return
+
+    df = pd.read_csv(csv_path)
+    df = df[df["comp_local_path"].notna() & df["src_local_path"].notna()].copy()
+    df = df[
+        df["src_local_path"].apply(lambda p: Path(p).exists())
+        & df["comp_local_path"].apply(lambda p: Path(p).exists())
+    ]
+    if df.empty:
+        print("No valid rows with source/target image files found for preview.")
+        return
+
+    tokenizer, text_encoder = load_text_encoder(device=device)
+    dino_model, dino_processor = get_frozen_model(device=device)
+
+    save_dir_path = Path(save_dir) if save_dir else None
+    if save_dir_path:
+        save_dir_path.mkdir(parents=True, exist_ok=True)
+
+    samples = df.sample(n=min(samples_to_show, len(df)))
+    print(f"Previewing {len(samples)} samples...")
+
+    for _, row in samples.iterrows():
+        src_path = Path(row["src_local_path"])
+        tgt_path = Path(row["comp_local_path"])
+        try:
+            src_img = Image.open(src_path).convert("RGB")
+            tgt_img = Image.open(tgt_path).convert("RGB")
+
+            x_src = embed_image_with_dino(
+                src_path, model=dino_model, processor=dino_processor, device=device, pool=True
+            )
+            t_emb = embed_llm_edit(
+                row["llm_edit"], tokenizer=tokenizer, text_encoder=text_encoder, device=device, pool=True
+            )
+            x_tgt = embed_image_with_dino(
+                tgt_path, model=dino_model, processor=dino_processor, device=device, pool=True
+            )
+
+            with torch.no_grad():
+                _, x_hat = model(x_src.unsqueeze(0).to(device), t_emb.unsqueeze(0).to(device))
+            x_hat = x_hat.squeeze(0).cpu()
+            x_tgt = x_tgt.cpu()
+            dist = torch.norm(x_hat - x_tgt, p=2).item()
+
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            axes[0].imshow(src_img)
+            axes[0].set_title(f"Source: {row.get('src_country', 'original')}\n{row['filename']}", fontsize=10)
+            axes[0].axis("off")
+
+            axes[1].imshow(tgt_img)
+            axes[1].set_title(f"Target: {row['target_country']}\nL2 dist={dist:.3f}", fontsize=10, color="blue")
+            axes[1].axis("off")
+
+            edit_text = row.get("llm_edit", "No instruction")
+            wrapped_text = "\n".join(textwrap.wrap(f"Instruction: {edit_text}", width=80))
+            plt.suptitle(wrapped_text, fontsize=11, y=1.02)
+            plt.tight_layout()
+
+            if save_dir_path:
+                out_path = save_dir_path / f"preview_{row['filename']}_{row['target_country']}.png"
+                plt.savefig(out_path, bbox_inches="tight")
+                print(f"Saved preview to {out_path} (L2 dist={dist:.3f})")
+                plt.close(fig)
+            elif show:
+                plt.show()
+            else:
+                plt.close(fig)
+        except Exception as exc:
+            print(f"Error previewing {row['filename']}: {exc}")
+
+
 def get_device():
     """Return the best available torch device (lazy import to avoid hard dependency)."""
     import torch
@@ -385,6 +484,10 @@ class TextGuidedDelta(nn.Module):
 
     def __init__(self, d_img: int, d_txt: int, hidden: int = 512, dropout: float = 0.1):
         super().__init__()
+        self.d_img = d_img
+        self.d_txt = d_txt
+        self.hidden = hidden
+        self.dropout = dropout
         self.text_proj = nn.Sequential(
             nn.Linear(d_txt, hidden),
             nn.ReLU(),
@@ -407,6 +510,49 @@ class TextGuidedDelta(nn.Module):
         delta = self.delta_mlp(fused)
         x_hat = x + delta
         return delta, x_hat
+
+    def save_pretrained(self, save_directory: Union[str, Path]) -> None:
+        """
+        Save weights and minimal config in a HuggingFace-like layout.
+        Produces save_directory/pytorch_model.bin with state_dict + config.
+        """
+        save_dir = Path(save_directory)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        state = {k: v.cpu() for k, v in self.state_dict().items()}
+        payload = {
+            "state_dict": state,
+            "config": {
+                "d_img": self.d_img,
+                "d_txt": self.d_txt,
+                "hidden": self.hidden,
+                "dropout": self.dropout,
+            },
+        }
+        torch.save(payload, save_dir / "pytorch_model.bin")
+
+    @classmethod
+    def from_pretrained(cls, load_directory: Union[str, Path], map_location=None):
+        """
+        Load weights saved via save_pretrained. map_location is forwarded to torch.load.
+        """
+        load_dir = Path(load_directory)
+        checkpoint_path = load_dir / "pytorch_model.bin"
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"No checkpoint found at {checkpoint_path}")
+
+        checkpoint = torch.load(checkpoint_path, map_location=map_location)
+        cfg = checkpoint.get("config")
+        if not cfg:
+            raise ValueError("Checkpoint missing config; cannot reconstruct model.")
+
+        model = cls(
+            d_img=cfg["d_img"],
+            d_txt=cfg["d_txt"],
+            hidden=cfg.get("hidden", 512),
+            dropout=cfg.get("dropout", 0.1),
+        )
+        model.load_state_dict(checkpoint["state_dict"])
+        return model
 
 
 class EditDataset(Dataset):
