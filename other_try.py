@@ -6,10 +6,12 @@ import sys
 import zipfile
 from pathlib import Path
 
+import textwrap
+
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from sentence_transformers import SentenceTransformer, util
 
 sys.path.append("./taesd")
@@ -86,6 +88,48 @@ def search_llm_edit_image(prompt: str, k: int = 1, show: bool = False):
     top = hits[0]
     print(f"Using search match: {top['name']} (score={top['score']:.3f})")
     return top
+
+
+# --- Visualization helpers ---
+def caption_image(image: Image.Image, title: str, caption: str = "", wrap: int = 48):
+    """
+    Add a caption strip under an image so the prompt is visible beside it.
+    """
+    img = image.convert("RGB").resize((IMAGE_SIZE, IMAGE_SIZE))
+    font = ImageFont.load_default()
+    wrapped_caption = textwrap.fill(caption, width=wrap) if caption else ""
+
+    full_text = title if title else ""
+    if wrapped_caption:
+        full_text = f"{full_text}\n{wrapped_caption}" if full_text else wrapped_caption
+
+    draw = ImageDraw.Draw(img)
+    text_w, text_h = draw.multiline_textsize(full_text, font=font)
+    pad = 6
+    strip_h = text_h + 2 * pad if full_text else 0
+
+    out = Image.new("RGB", (img.width, img.height + strip_h), color=(24, 24, 24))
+    out.paste(img, (0, 0))
+    if full_text:
+        draw = ImageDraw.Draw(out)
+        draw.multiline_text((pad, img.height + pad), full_text, fill=(255, 255, 255), font=font)
+    return out
+
+
+def concat_horizontal(images):
+    """Concatenate PIL images horizontally with padding."""
+    if not images:
+        raise ValueError("No images to concatenate")
+    pad = 10
+    width = sum(im.width for im in images) + pad * (len(images) + 1)
+    height = max(im.height for im in images) + 2 * pad
+    canvas = Image.new("RGB", (width, height), color=(16, 16, 16))
+    x = pad
+    for im in images:
+        y = pad + (height - 2 * pad - im.height) // 2
+        canvas.paste(im, (x, y))
+        x += im.width + pad
+    return canvas
 DEFAULT_CSV = Path("final_dataset_clean.csv")
 DEFAULT_SAVE_DIR = Path("gaussian_blend_outputs")
 IMAGE_SIZE = 512
@@ -100,7 +144,7 @@ dev = torch.device(
 taesd = TAESD().to(dev).eval()
 
 
-def load_pair_from_csv(csv_path: Path, row_index: int = 0):
+def load_pair_from_csv(csv_path: Path, row_index: int = 1):
     """
     Load source + comparison image pair and LLM edit prompt from the dataset CSV.
     Requires columns: src_local_path, comp_local_path, llm_edit.
@@ -311,6 +355,7 @@ def parse_args():
 
 
 def main():
+    
     args = parse_args()
 
     image_a, _comp_img, llm_edit_text, row = load_pair_from_csv(args.csv_path, args.row_index)
