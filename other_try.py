@@ -305,16 +305,18 @@ def optimize_semantic_midpoint(
     latent_a/latent_b: TAESD latents [1,4,h,w] on device
     """
     with torch.no_grad():
+        # the source(image a) and llm edit promter image (image b) embeddings
         emb_a = embed_tensor_with_dino(image_a, dino_model, dino_processor)
         emb_b = embed_tensor_with_dino(image_b, dino_model, dino_processor)
         target_emb = 0.5 * (emb_a + emb_b)
-
+    # the parameter we optimize
     latent_param = torch.nn.Parameter(0.5 * (latent_a + latent_b))
     optimizer = torch.optim.Adam([latent_param], lr=lr)
 
     losses = []
     for step in range(1, steps + 1):
         optimizer.zero_grad()
+        # get decoded image from latent
         decoded = decode_latent(latent_param, allow_grad=True)
         emb_hat = embed_tensor_with_dino(decoded, dino_model, dino_processor)
         loss = F.mse_loss(emb_hat, target_emb)
@@ -357,7 +359,7 @@ def parse_args():
 def main():
     
     args = parse_args()
-
+    # Load source + target images and llm_edit prompt from CSV
     image_a, _comp_img, llm_edit_text, row = load_pair_from_csv(args.csv_path, args.row_index)
     print(
         f"Loaded row {args.row_index} from {args.csv_path}:\n"
@@ -367,10 +369,11 @@ def main():
     )
 
     show_search = not args.no_show
+    # Search for target image using llm_edit prompt
     search_hit = search_llm_edit_image(llm_edit_text, k=args.search_top_k, show=show_search)
     target_image = search_hit["image"]
     print(f"llm_edit prompt: {llm_edit_text}")
-
+    # Encode image_a(the source image) to TAESD latents
     image_a_tensor, latent_a = encode_image(image_a)
     target_tensor, latent_b = encode_image(target_image)
     print("latent A", summarize_tensor(latent_a[0]))
@@ -386,7 +389,10 @@ def main():
             TF.to_pil_image(image_a_tensor[0].cpu()).show()
             if not show_search:
                 TF.to_pil_image(target_tensor[0].cpu()).show()
-
+    # Perform blending or semantic midpoint optimization
+    # belnding means we just do a Gaussian mask blend of the two latents
+    # semantic midpoint optimization means we optimize a latent so that its decoded image embedding is the
+    #  midpoint between the two images in DINOv2 space
     if args.mode == "blend":
         blended_latent = blend_latents(latent_a, latent_b, sigma=args.sigma)
         decoded = decode_latent(blended_latent)
@@ -396,10 +402,13 @@ def main():
         elif not args.no_show:
             TF.to_pil_image(decoded[0].cpu()).show()
     else:
+        # dinov2 model for semantic embeddings
         dino_model, dino_processor = get_frozen_model(device=dev)
         dino_model.eval()
         for p in dino_model.parameters():
             p.requires_grad_(False)
+        # Optimize semantic midpoint latent
+        # we get the decoded image and the loss history
         decoded, losses = optimize_semantic_midpoint(
             image_a=image_a_tensor,
             image_b=target_tensor,
