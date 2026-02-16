@@ -392,7 +392,7 @@ def parse_args():
     parser.add_argument("--cohere-strength", type=float, default=0.6 , help="Strength for SD img2img.")
     parser.add_argument("--cohere-guidance", type=float, default=7.5 , help="Guidance scale for SD img2img, mean that higher values encourage adherence to the prompt.")
     parser.add_argument("--cohere-steps", type=int, default=50 , help="Number of diffusion steps for SD img2img.")
-    parser.add_argument("--cohere-seed", type=int, default=None , help="Random seed for SD img2img.")
+    parser.add_argument("--cohere-seed", type=int, default=42 , help="Random seed for SD img2img.")
     return parser.parse_args()
 
 
