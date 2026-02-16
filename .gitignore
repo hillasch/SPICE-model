@@ -1,10 +1,30 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Python
 __pycache__/
 *.pyc
 .env
 .venv/
+
+# Model / checkpoints
 *.pt
 *.pth
 *.ckpt
-images/
-final_dataset_clean.csv
 
+# Images / outputs
+images/
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# Large datasets
+final_dataset_clean.csv
+dataset_cap_edit_only.csv
+unsplash-25k-photos.zip
+unsplash-25k-photos-embeddings.pkl
+
+# External repos
+image-transcreation-repo/
