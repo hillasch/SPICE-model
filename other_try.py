@@ -14,7 +14,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image, ImageDraw, ImageFont
 from sentence_transformers import SentenceTransformer, util
 
-sys.path.append("./taesd")
+sys.path.append("./taesd")  
 from diffusers import StableDiffusionImg2ImgPipeline
 from pro_deep import get_frozen_model
 from taesd import TAESD
@@ -144,7 +144,7 @@ dev = torch.device(
 taesd = TAESD().to(dev).eval()
 
 
-def load_pair_from_csv(csv_path: Path, row_index: int = 1):
+def load_pair_from_csv(csv_path: Path, row_index: int = 9):
     """
     Load source + comparison image pair and LLM edit prompt from the dataset CSV.
     Requires columns: src_local_path, comp_local_path, llm_edit.
@@ -349,10 +349,10 @@ def parse_args():
     parser.add_argument("--cohere", dest="cohere", action="store_true", default=True, help="Run SD img2img to project the output back to a natural image manifold.")
     parser.add_argument("--no-cohere", dest="cohere", action="store_false", help="Skip SD img2img refinement.")
     parser.add_argument("--cohere-prompt", type=str, default=None, help="Prompt for SD img2img; default uses llm_edit.")
-    parser.add_argument("--cohere-strength", type=float, default=0.6)
-    parser.add_argument("--cohere-guidance", type=float, default=7.5)
-    parser.add_argument("--cohere-steps", type=int, default=50)
-    parser.add_argument("--cohere-seed", type=int, default=None)
+    parser.add_argument("--cohere-strength", type=float, default=0.6 , help="Strength for SD img2img.")
+    parser.add_argument("--cohere-guidance", type=float, default=7.5 , help="Guidance scale for SD img2img, mean that higher values encourage adherence to the prompt.")
+    parser.add_argument("--cohere-steps", type=int, default=50 , help="Number of diffusion steps for SD img2img.")
+    parser.add_argument("--cohere-seed", type=int, default=None , help="Random seed for SD img2img.")
     return parser.parse_args()
 
 
