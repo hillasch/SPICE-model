@@ -154,6 +154,7 @@ def concat_horizontal(images):
         canvas.paste(im, (x, y))
         x += im.width + pad
     return canvas
+
 DEFAULT_CSV = Path("dataset_cap_edit_only.csv")
 DEFAULT_SAVE_DIR = Path("gaussian_blend_outputs")
 IMAGE_SIZE = 512
@@ -165,11 +166,13 @@ DEFAULT_LR = 0.1
 dev = torch.device(
     "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 )
+# Initialize TAESD autoencoder that helps us encode images to a latent space and decode blended latents back to images
 taesd = TAESD().to(dev).eval()
 
 
 
 def summarize_tensor(x):
+    # Return a string summarizing a tensor's shape and value statistics with color coding for min/mean/max.
     return f"\033[34m{str(tuple(x.shape)).ljust(24)}\033[0m (\033[31mmin {x.min().item():+.4f}\033[0m / \033[32mmean {x.mean().item():+.4f}\033[0m / \033[33mmax {x.max().item():+.4f}\033[0m)"
 
 
@@ -352,7 +355,6 @@ def parse_args():
 
 
 def main():
-    
     args = parse_args()
     # Load source + target images and llm_edit prompt from CSV
     image_a, _comp_img, llm_edit_text, row = load_pair_from_csv(args.csv_path, args.row_index)
