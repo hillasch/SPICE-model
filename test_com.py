@@ -218,26 +218,6 @@ def preprocess(image, size=IMAGE_SIZE):
     return TF.resize(image, [size, size])
 
 
-def gaussian_mask(H, W, sigma=DEFAULT_SIGMA, device=dev, dtype=torch.float32):
-    """
-    Create a centered Gaussian weighting mask for spatial blending or
-    latent-space regularization.
-
-    This was implemented as an optional Gaussian blending mechanism.
-    In the final experiments, this mask was not used, but the function
-    is kept for ablation studies and future extensions.
-    """
-    y, x = torch.meshgrid(
-        torch.linspace(-1, 1, H, device=device, dtype=dtype),
-        torch.linspace(-1, 1, W, device=device, dtype=dtype),
-        indexing="ij",
-    )
-    d2 = x*2 + y*2
-    mask = torch.exp(-d2 / (2 * sigma**2))
-    mask = (mask - mask.min()) / (mask.max() - mask.min() + 1e-8)
-    return mask.unsqueeze(0).unsqueeze(0)
-
-
 def encode_image(image: Image.Image):
     """
     Preprocess a PIL image (resize), convert it to a torch tensor (BCHW, 0-1),
@@ -268,22 +248,6 @@ def decode_latent(latent: torch.Tensor, allow_grad: bool = False):
         return taesd.decoder(latent).clamp(0, 1)
 
 
-# def blend_latents(z1: torch.Tensor, z2: torch.Tensor, sigma=DEFAULT_SIGMA):
-#     """
-#     Blend two TAESD latent tensors using a centered Gaussian spatial mask.
-#
-#     This function performs a simple, non-learned baseline blending of two
-#     latents by smoothly weighting the center of z1 and the periphery of z2.
-#     It is used only in 'blend' mode as an ablation / comparison method.
-#     """
-#     if z1.shape != z2.shape:
-#         raise ValueError(f"Latent shapes must match, got {z1.shape} vs {z2.shape}")
-#     H, W = z1.shape[-2:]
-#     mask = gaussian_mask(H, W, sigma=sigma, device=z1.device, dtype=z1.dtype)
-#     blended = mask * z1 + (1.0 - mask) * z2
-#     print("mask", summarize_tensor(mask))
-#     print("blended latent", summarize_tensor(blended[0]))
-#     return blended
 
 
 def save_tensor_image(tensor: torch.Tensor, path: Path, show: bool = True):
@@ -436,11 +400,10 @@ def optimize_semantic_midpoint(
 # Hyperparameters options
 def parse_args():
     parser = argparse.ArgumentParser(description="Gaussian-mask latent blending or semantic midpoint optimization.")
-    parser.add_argument("--mode", choices=["blend", "opt"], default="opt", help="blend=Gaussian mask; opt=semantic midpoint optimization.")
+    parser.add_argument("--mode", choices=[ "opt"], default="opt", help="opt=semantic midpoint optimization.")
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_CSV, help="Dataset CSV with local paths.")
     parser.add_argument("--row-index", type=int, default=0, help="Row to pull source/target images from.")
     parser.add_argument("--search-top-k", type=int, default=1, help="How many search results to fetch for llm_edit text (first hit is used).")
-    parser.add_argument("--sigma", type=float, default=DEFAULT_SIGMA, help="Gaussian sigma for mask decay (blend mode).")
     parser.add_argument("--save-dir", type=Path, default=DEFAULT_SAVE_DIR, help="Where to save outputs.")
     parser.add_argument("--no-show", action="store_true", help="Do not open image previews.")
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS, help="Optimization steps (opt mode).")
@@ -492,41 +455,31 @@ def main():
             if not show_search:
                 TF.to_pil_image(target_tensor[0].cpu()).show()
     # Combine source and target in latent space:
-    # - blend: simple Gaussian-mask interpolation (baseline / ablation)
     # - opt:   optimize a latent so the decoded image is the DINOv2 semantic midpoint (main method)
-    if args.mode == "blend":
-        blended_latent = blend_latents(latent_a, latent_b, sigma=args.sigma)
-        decoded = decode_latent(blended_latent)
-        print("decoded blend", summarize_tensor(decoded[0]))
-        if not args.no_save:
-            save_tensor_image(decoded[0], args.save_dir / "blended.png", show=not args.no_show)
-        elif not args.no_show:
-            TF.to_pil_image(decoded[0].cpu()).show()
-    else:
-        # Load a frozen DINOv2 model to compute semantic embeddings (no training of DINO parameters)
-        dino_model, dino_processor = get_frozen_model(device=dev)
-        dino_model.eval()
-        for p in dino_model.parameters():
-            p.requires_grad_(False)
-        # Optimize a latent so that the decoded image lies at the DINOv2 semantic midpoint
-        # between the source image and the retrieved target image
-        decoded, losses = optimize_semantic_midpoint(
-            image_a=image_a_tensor,
-            image_b=target_tensor,
-            latent_a=latent_a,
-            latent_b=latent_b,
-            dino_model=dino_model,
-            dino_processor=dino_processor,
-            steps=args.steps,
-            lr=args.lr,
-            grad_clip=args.grad_clip,
-        )
-        print(f"final loss={losses[-1]:.6f} after {len(losses)} steps")
-        if not args.no_save:
-            save_tensor_image(decoded[0], args.save_dir / "semantic_midpoint.png", show=not args.no_show)
-        elif not args.no_show:
-            TF.to_pil_image(decoded[0].cpu()).show()
-    # Stable Diffusion img2img refinement to improve visual coherence/realism
+    # Load a frozen DINOv2 model to compute semantic embeddings (no training of DINO parameters)
+    dino_model, dino_processor = get_frozen_model(device=dev)
+    dino_model.eval()
+    for p in dino_model.parameters():
+        p.requires_grad_(False)
+    # Optimize a latent so that the decoded image lies at the DINOv2 semantic midpoint
+    # between the source image and the retrieved target image
+    decoded, losses = optimize_semantic_midpoint(
+        image_a=image_a_tensor,
+        image_b=target_tensor,
+        latent_a=latent_a,
+        latent_b=latent_b,
+        dino_model=dino_model,
+        dino_processor=dino_processor,
+        steps=args.steps,
+        lr=args.lr,
+        grad_clip=args.grad_clip,
+    )
+    print(f"final loss={losses[-1]:.6f} after {len(losses)} steps")
+    if not args.no_save:
+        save_tensor_image(decoded[0], args.save_dir / "semantic_midpoint.png", show=not args.no_show)
+    elif not args.no_show:
+        TF.to_pil_image(decoded[0].cpu()).show()
+# Stable Diffusion img2img refinement to improve visual coherence/realism
     if args.cohere:
         prompt_for_sd = args.cohere_prompt if args.cohere_prompt is not None else llm_edit_text
         sd_input = TF.to_pil_image(decoded[0].cpu())
