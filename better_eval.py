@@ -1,3 +1,4 @@
+# Setup and Imports
 import torch
 import torchvision.transforms.functional as TF
 from pathlib import Path
@@ -8,7 +9,22 @@ from dino import get_frozen_model
 
 
 def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
+
+    """
+    Run a single evaluation for one dataset row (image_index).
+
+    Flow:
+    1) Load (src, comp, prompt) from CSV.
+    2) Retrieve a "target image" using semantic search over llm_edit prompt.
+    3) Encode source + target; optimize a semantic midpoint latent using DINO embeddings.
+    4) Refine decoded midpoint with Stable Diffusion img2img ("make_image_coherent").
+    5) Compute similarity metrics (cosine + L2) between:
+       - our generated image vs source
+       - comp (baseline comparison image) vs source
+    6) Return a dict with metrics + URLs for logging/analysis.
+    """
     # --- keep your defaults exactly as in the original cell ---
+    # these are hyperparameters for the latent optimization + SD refinement stages
     lr = 0.01
     grad_clip = 1.0
     strength = 0.6
@@ -22,15 +38,21 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
     )
 
     # --- original flow (same order) ---
+
+    # Load one row from the dataset CSV (src image, baseline comp image, and llm_edit prompt)
     src_img, comp_img, prompt, index = load_pair_from_csv(Path(model.DEFAULT_CSV), row_index=image_index)
+
+    #  Retrieve the "closest" image to the prompt using semantic search function
     search_hit = model.search_llm_edit_image(prompt, k=1, show=False)
     target_image = search_hit["image"]
     print(f"_________llm_edit prompt:________ {prompt}")
-   
+
+    # Encode source and target images into tensors + latents
+    # image_a_tensor/target_tensor are image tensors; latent_a/latent_b are latent-space representations.
     image_a_tensor, latent_a = model.encode_image(src_img)
     target_tensor, latent_b = model.encode_image(target_image)
 
-    # dinov2 model for semantic embeddings
+    # DINOv2 setup model for semantic embeddings
     dino_model, dino_processor = get_frozen_model(device=dev)
     dino_model.eval()
     for p in dino_model.parameters():
@@ -49,6 +71,7 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
         grad_clip=grad_clip,
     )
 
+    # Make result more coherent with SD img2img refinement
     prompt_for_sd = prompt
     sd_input = TF.to_pil_image(decoded[0].cpu())
     sd_image = model.make_image_coherent(
@@ -60,14 +83,18 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
         seed=seed,
         device=str(dev),
     )
-    # matrics for our image
+
+    # Metrics: OUR generated image vs SOURCE (semantic similarity)
+
     our_tensor, _ = model.encode_image(sd_image)
     first_image, _ = model.encode_image(src_img)
 
+    # Embed with DINO
     with torch.no_grad():
         our_image = model.embed_tensor_with_dino(our_tensor, dino_model, dino_processor)
         src_image = model.embed_tensor_with_dino(first_image, dino_model, dino_processor)
 
+    # Cosine similarity: higher means closer semantically
     cosine_sim_our_src = torch.nn.functional.cosine_similarity(
         our_image.unsqueeze(0), src_image.unsqueeze(0), dim=1
     )
@@ -78,10 +105,12 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
     )
     print(f"L2 distance between generated image and source image: {norm_l2_our_src.item():.4f}")
 
-    # matrics for our image
+    # Metrics: COMP (baseline) image vs SOURCE
+
     comp_tensor, _ = model.encode_image(comp_img)
     first_image, _ = model.encode_image(src_img)
 
+    # Embed with DINO
     with torch.no_grad():
         comp_image = model.embed_tensor_with_dino(comp_tensor, dino_model, dino_processor)
         src_image = model.embed_tensor_with_dino(first_image, dino_model, dino_processor)
@@ -115,21 +144,26 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
     }
 
 
-
+# Lists to aggregate metrics across multiple evaluated indices
 list_our_cosinos = []
 list_comp_cosinos = []
 list_our_cosinos_l2 = []
 list_comp_cosinos_l2 = []
 indexes = [2000]
 counter = 0
+
 for idx in indexes:
     counter += 1
     print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
     ine_dict = run_eval(image_index=idx, steps=4, num_steps=5)
+
+    # Collect scalar metrics for averaging later
     list_our_cosinos.append(ine_dict["cosine_our_src"])
     list_comp_cosinos.append(ine_dict["cosine_comp_src"])
     list_our_cosinos_l2.append(ine_dict["l2_our_src"])
     list_comp_cosinos_l2.append(ine_dict["l2_comp_src"])
+
+# Aggregate results (simple means)
 print(f"Average cosine similarity between generated images and source images: {sum(list_our_cosinos) / len(list_our_cosinos):.4f}")
 print(f"Average cosine similarity between comparison comp images and source images: {sum(list_comp_cosinos) / len(list_comp_cosinos):.4f}") 
 print(f"Average L2 distance between generated images and source images: {sum(list_our_cosinos_l2) / len(list_our_cosinos_l2):.4f}")
