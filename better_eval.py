@@ -2,7 +2,7 @@ import torch
 import torchvision.transforms.functional as TF
 from pathlib import Path
 import pandas as pd
-import model
+import test_com as model
 from pull_images import load_pair_from_csv
 from dino import get_frozen_model
 
@@ -125,7 +125,7 @@ counter = 0
 for idx in indexes:
     counter += 1
     print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
-    ine_dict = run_eval(image_index=idx, steps=300, num_steps=300)
+    ine_dict = run_eval(image_index=idx, steps=4, num_steps=5)
     list_our_cosinos.append(ine_dict["cosine_our_src"])
     list_comp_cosinos.append(ine_dict["cosine_comp_src"])
     list_our_cosinos_l2.append(ine_dict["l2_our_src"])
