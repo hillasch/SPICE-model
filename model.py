@@ -366,10 +366,13 @@ def main():
     print("latent target", summarize_tensor(latent_b[0]))
 
     args.save_dir.mkdir(exist_ok=True, parents=True)
+    run_dir = args.save_dir / f"row_{args.row_index:04d}"
+    run_dir.mkdir(exist_ok=True, parents=True)
 
     if not args.no_save:
         save_tensor_image(image_a_tensor[0], args.save_dir / "image_source.png", show=not args.no_show)
         save_tensor_image(target_tensor[0], args.save_dir / "image_llm_edit.png", show=not args.no_show and not show_search)
+        sd_image.save(run_dir / out_name)
     else:
         if not args.no_show:
             TF.to_pil_image(image_a_tensor[0].cpu()).show()
