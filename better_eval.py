@@ -98,8 +98,8 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
 
     #src_img.show()
 
-    #sd_image.show()
-    #comp_img.show()
+    sd_image.show()
+    comp_img.show()
     df = pd.read_csv("dataset_cap_edit_only.csv")
 
     return {
@@ -120,8 +120,12 @@ list_our_cosinos = []
 list_comp_cosinos = []
 list_our_cosinos_l2 = []
 list_comp_cosinos_l2 = []
-for idx in range(0, 4250,75):
-    ine_dict = run_eval(image_index=idx, steps=30, num_steps=50)
+indexes = [2000]
+counter = 0
+for idx in indexes:
+    counter += 1
+    print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
+    ine_dict = run_eval(image_index=idx, steps=300, num_steps=300)
     list_our_cosinos.append(ine_dict["cosine_our_src"])
     list_comp_cosinos.append(ine_dict["cosine_comp_src"])
     list_our_cosinos_l2.append(ine_dict["l2_our_src"])
