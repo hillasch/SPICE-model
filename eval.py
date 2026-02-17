@@ -61,15 +61,20 @@ for i in range(1):
     )
 
     
-    our_image = model.embed_tensor_with_dino(sd_image, dino_model, dino_processor)
-    print(our_image)
-    there_image = model.embed_tensor_with_dino(comp_img, dino_model, dino_processor)
-    print(there_image)
-    cosine_sim = torch.nn.functional.cosine_similarity(our_image, there_image)
-    print(f"Cosine similarity between generated image and target image: {cosine_sim.item():.4f}")
-    norm_l2 = torch.nn.functional.pairwise_distance(our_image, there_image, p=2)
-    print(f"L2 distance between generated image and target image: {norm_l2.item():.4f}")
-    sd_image.show()
-    there_image.show()
+our_tensor, _ = model.encode_image(sd_image)
+first_image, _ = model.encode_image(src_img)
 
- 
+with torch.no_grad():
+    our_image = model.embed_tensor_with_dino(our_tensor, dino_model, dino_processor)
+    there_image = model.embed_tensor_with_dino(first_image, dino_model, dino_processor)
+cosine_sim = torch.nn.functional.cosine_similarity(
+    our_image.unsqueeze(0), there_image.unsqueeze(0), dim=1
+)
+print(f"Cosine similarity between generated image and target image: {cosine_sim.item():.4f}")
+norm_l2 = torch.nn.functional.pairwise_distance(
+    our_image.unsqueeze(0), there_image.unsqueeze(0), p=2
+)
+print(f"L2 distance between generated image and target image: {norm_l2.item():.4f}")    
+src_img.show()
+sd_image.show()
+comp_img.show()
