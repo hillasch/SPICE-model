@@ -28,3 +28,5 @@ unsplash-25k-photos-embeddings.pkl
 
 # External repos
 image-transcreation-repo/
+# IDE (PyCharm)
+.idea/
