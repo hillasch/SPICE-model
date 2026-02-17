@@ -1,3 +1,4 @@
+# Set up imports 
 import argparse
 import io
 import os
@@ -18,10 +19,11 @@ from sentence_transformers import SentenceTransformer, util
 from diffusers import StableDiffusionImg2ImgPipeline
 from dino import get_frozen_model
 
-# we get the load_pair_from_csv function from pull_images.py to load the source and target images and the llm edit prompt from the dataset CSV
+# Using pre - built function from pull_images that access the dataset csv and 
+# load the source and target images, as well as the llm edit prompt
 from pull_images import load_pair_from_csv
 
-# TAESD is expected to live as taesd.py in the same folder as this script
+# Using the TAESD autoencoder for latent encoding and decoding of images, as well as Gaussian blending of latents
 try:
     from taesd import TAESD
 except ImportError as e:
@@ -29,7 +31,7 @@ except ImportError as e:
         "Could not import TAESD. Make sure taesd.py, taesd_encoder.pth, and taesd_decoder.pth "
         "are in the same directory as model.py."
     ) from e
-
+# If teasd files are missing run the following code to download them:
 
 
 
@@ -41,8 +43,15 @@ EMB_FILENAME = "unsplash-25k-photos-embeddings.pkl"
 SEARCH_MODEL = SentenceTransformer("clip-ViT-B-32")
 print("Loaded sentence transformer model")
 
-
+#
 def _ensure_unsplash_data():
+    """
+    Ensure that the Unsplash dataset files exist locally.
+
+    If the photo archive or the precomputed embeddings file are missing,
+    they will be downloaded from the SBERT dataset repository.
+
+    """
     if not os.path.exists(PHOTO_FILENAME):
         util.http_get("http://sbert.net/datasets/" + PHOTO_FILENAME, PHOTO_FILENAME)
     if not os.path.exists(EMB_FILENAME):
