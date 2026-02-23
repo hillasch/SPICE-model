@@ -126,6 +126,7 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
     print(f"L2 distance between comparison comp image and source image: {norm_l2_comp_src.item():.4f}")
 
     src_img.show()
+    target_image.show()
     TF.to_pil_image(decoded[0].cpu()).show()
     sd_image.show()
     comp_img.show()
@@ -149,13 +150,13 @@ list_our_cosinos = []
 list_comp_cosinos = []
 list_our_cosinos_l2 = []
 list_comp_cosinos_l2 = []
-indexes = [2000]
+indexes = [1]
 counter = 0
 
 for idx in indexes:
     counter += 1
     print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
-    ine_dict = run_eval(image_index=idx, steps=4, num_steps=4)
+    ine_dict = run_eval(image_index=idx, steps=450, num_steps=500)
 
     # Collect scalar metrics for averaging later
     list_our_cosinos.append(ine_dict["cosine_our_src"])
@@ -164,8 +165,8 @@ for idx in indexes:
     list_comp_cosinos_l2.append(ine_dict["l2_comp_src"])
 
 # Aggregate results (simple means)
-print(f"Average cosine similarity between generated images and source images: {sum(list_our_cosinos) / len(list_our_cosinos):.4f}")
-print(f"Average cosine similarity between comparison comp images and source images: {sum(list_comp_cosinos) / len(list_comp_cosinos):.4f}") 
-print(f"Average L2 distance between generated images and source images: {sum(list_our_cosinos_l2) / len(list_our_cosinos_l2):.4f}")
-print(f"Average L2 distance between comparison comp images and source images: {sum(list_comp_cosinos_l2) / len(list_comp_cosinos_l2):.4f}")
+#print(f"Average cosine similarity between generated images and source images: {sum(list_our_cosinos) / len(list_our_cosinos):.4f}")
+#print(f"Average cosine similarity between comparison comp images and source images: {sum(list_comp_cosinos) / len(list_comp_cosinos):.4f}") 
+#print(f"Average L2 distance between generated images and source images: {sum(list_our_cosinos_l2) / len(list_our_cosinos_l2):.4f}")
+#print(f"Average L2 distance between comparison comp images and source images: {sum(list_comp_cosinos_l2) / len(list_comp_cosinos_l2):.4f}")
 print(f"Prompt from llm edit: {ine_dict['prompt']}")
