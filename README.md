@@ -69,9 +69,9 @@ Example:
 
 ```python
 indexes = [ 2000]
-num_steps = diffusion steps.
-steps = number of latent optimization steps.
-ine_dict = run_eval(image_index=idx, steps=450, num_steps=500)
+num_steps = 450
+steps = 500.
+ine_dict = run_eval(image_index=idx, steps=num_steps, num_steps=steps)
 ```
 
 ## Output
