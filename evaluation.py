@@ -125,8 +125,8 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
     )
     print(f"L2 distance between comparison comp image and source image: {norm_l2_comp_src.item():.4f}")
 
-    #src_img.show()
-
+    src_img.show()
+    TF.to_pil_image(decoded[0].cpu()).show()
     sd_image.show()
     comp_img.show()
     df = pd.read_csv("dataset_cap_edit_only.csv")
