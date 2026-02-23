@@ -17,7 +17,8 @@ from sentence_transformers import SentenceTransformer, util
 sys.path.append("./taesd")  
 from diffusers import StableDiffusionImg2ImgPipeline
 from pro_deep import get_frozen_model
-from taesd import TAESD
+
+
 
 
 # --- Semantic search setup (Unsplash 25k + CLIP) ---
@@ -130,7 +131,7 @@ def concat_horizontal(images):
         canvas.paste(im, (x, y))
         x += im.width + pad
     return canvas
-DEFAULT_CSV = Path("final_dataset_clean.csv")
+DEFAULT_CSV = Path("dataset_cap_edit_only.csv")
 DEFAULT_SAVE_DIR = Path("gaussian_blend_outputs")
 IMAGE_SIZE = 512
 DEFAULT_SIGMA = 1
