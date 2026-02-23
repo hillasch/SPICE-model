@@ -68,10 +68,10 @@ Edit these values inside `evaluation.py`(line - 155):
 Example:
 
 ```python
-indexes = [ 2000]
+indexes = [2000]
 num_steps = 450
-steps = 500.
-ine_dict = run_eval(image_index=idx, steps=num_steps, num_steps=steps)
+steps = 500
+ine_dict = run_eval(image_index=idx, steps=steps, num_steps=num_steps)
 ```
 
 ## Output
