@@ -155,7 +155,7 @@ counter = 0
 for idx in indexes:
     counter += 1
     print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
-    ine_dict = run_eval(image_index=idx, steps=4, num_steps=5)
+    ine_dict = run_eval(image_index=idx, steps=4, num_steps=4)
 
     # Collect scalar metrics for averaging later
     list_our_cosinos.append(ine_dict["cosine_our_src"])
@@ -168,3 +168,4 @@ print(f"Average cosine similarity between generated images and source images: {s
 print(f"Average cosine similarity between comparison comp images and source images: {sum(list_comp_cosinos) / len(list_comp_cosinos):.4f}") 
 print(f"Average L2 distance between generated images and source images: {sum(list_our_cosinos_l2) / len(list_our_cosinos_l2):.4f}")
 print(f"Average L2 distance between comparison comp images and source images: {sum(list_comp_cosinos_l2) / len(list_comp_cosinos_l2):.4f}")
+print(f"Prompt from llm edit: {ine_dict['prompt']}")
