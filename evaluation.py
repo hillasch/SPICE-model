@@ -150,14 +150,22 @@ list_our_cosinos = []
 list_comp_cosinos = []
 list_our_cosinos_l2 = []
 list_comp_cosinos_l2 = []
-indexes = [1]
-counter = 0
 
+
+###########################
+indexes = [1234]
+steps=450
+num_steps=500
+###########################
+
+
+counter = 0
 for idx in indexes:
     counter += 1
     print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
-    ine_dict = run_eval(image_index=idx, steps=450, num_steps=500)
-
+    ine_dict = run_eval(image_index=idx, steps=steps, num_steps=num_steps)
+    print(f"url_comp: {ine_dict['url_comp']}")
+    print(f"url_src: {ine_dict['url_src']}")
     # Collect scalar metrics for averaging later
     list_our_cosinos.append(ine_dict["cosine_our_src"])
     list_comp_cosinos.append(ine_dict["cosine_comp_src"])
