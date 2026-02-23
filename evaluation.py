@@ -124,12 +124,18 @@ def run_eval(image_index: int, steps: int = 30, num_steps: int = 50):
         comp_image.unsqueeze(0), src_image.unsqueeze(0), p=2
     )
     print(f"L2 distance between comparison comp image and source image: {norm_l2_comp_src.item():.4f}")
-
+    # the sorce image
     src_img.show()
+    # the image from the semantic search hit (target for optimization)
     target_image.show()
+    # the image from our optimization + SD refinement
     TF.to_pil_image(decoded[0].cpu()).show()
+    # the final refined image from Stable Diffusion
     sd_image.show()
+    # the baseline comparison image from the dataset
     comp_img.show()
+
+
     df = pd.read_csv("dataset_cap_edit_only.csv")
 
     return {
@@ -153,7 +159,7 @@ list_comp_cosinos_l2 = []
 
 
 ###########################
-indexes = [1234]
+indexes = [3494]
 steps=450
 num_steps=500
 ###########################
