@@ -159,9 +159,9 @@ list_comp_cosinos_l2 = []
 
 
 ###########################
-indexes = [3494]
-steps=450
-num_steps=500
+indexes = [555]
+steps=12
+num_steps=12
 ###########################
 
 
