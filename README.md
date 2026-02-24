@@ -1,25 +1,32 @@
 # Evaluation Guide (`evaluation.py`)
 
-This README explains how to run `evaluation.py` and how it relies on `The_model.py` (optimization path only, without Gaussian blending).
+This README explains how to run `evaluation.py` and how it relies on `The_model.py`.
 
 ## What `evaluation.py` does
 `evaluation.py` runs a full evaluation pipeline for selected dataset rows:
-- Loads source image, comparison image, and `llm_edit` prompt.
+- Loads source image, comparison image(there image solution), and `llm_edit` prompt.
 - Builds a generated image using the project pipeline.
 - Compares features in DINOv2 space.
-- Prints per-sample metrics and final averages.
+- Prints dictionary metrics .
 
 ## `The_model.py` flow 
-The evaluation script calls functions from `The_model.py` using the optimization pipeline (`opt`).
+The evaluation script calls functions from `The_model.py` using the optimization pipeline.
 
-Flow:
+* At the beginning of the project, we built a pipeline that blended the original image with the closest image from the prompt using Gaussian blending. The results were not satisfactory, which showed us that a more complex blending approach was needed. The method remains in the model but is not used for the final output.
+
+
+Our model flow: 
+
 1. Load one CSV row (`src`, `comp`, `llm_edit`).
-2. Retrieve a target image by semantic search - CLIP (`search_llm_edit_image`).
+2. Retrieve a target image by semantic search - CLIP (`search_llm_edit_image`)
+   * Given a prompt, the function(CLIP) retrieves the closest image to the prompt using cosine similarity.
 3. Encode source and target images into TAESD latents (`encode_image`).
 4. Load frozen DINOv2 for semantic embeddings.
 5. Optimize a latent midpoint (`optimize_semantic_midpoint`) so decoded image embedding matches the DINO midpoint target.
+   * Too complex to explain here :-)
 6. Decode optimized latent to image.
 7. Refine with Stable Diffusion img2img (`make_image_coherent`).
+      Given a prompt and the opimize image, the StableDiffusionImg2ImgPipeline function generates an image
 
 ## Main hyperparameters in `The_model.py`
 Optimization:
@@ -60,13 +67,13 @@ python evaluation.py
 ```
 
 ## Configure before running
-Edit these values inside `evaluation.py`(line - 155):
+Edit these values inside `evaluation.py`(The end of the file):
 - `indexes`: dataset row indices to evaluate.
 - `steps`: latent optimization steps.
 - `num_steps`: diffusion refinement steps.
 
-Example:
 
+Example:
 ```python
 index = 2000
 num_steps = 450
@@ -74,31 +81,17 @@ steps = 500
 ine_dict = run_eval(image_index=index, steps=steps, num_steps=num_steps)
 ```
 
-Explanation for line 162
 
-Instead of specifying a single index, the evaluation script supports running on a list of indices.
-When a list is provided, the script evaluates each sample sequentially and reports the average metrics across all selected samples.
-```python
-index = [123,124]
-num_steps = 450
-steps = 500
-```
 ## Output
 For each run, the script prints metrics and returns a dictionary with:
 - `cosine_our_src`
 - `l2_our_src`
 - `cosine_comp_src`
 - `l2_comp_src`
-- prompt and source/comparison URLs
+- `source/comparison URLs`
+- `prompt`
 
 At the end, it prints average metrics across all selected indices(if puts list of indices).
-
-The script also opens 5 preview images:
-- source image
-- prompt search target image
-- decoded midpoint image
-- coherent (SD-refined) image
-- comparison image
 
 ## Metric meaning
 | Metric | Meaning | Better direction |
