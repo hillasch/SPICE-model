@@ -4,7 +4,7 @@ This README explains how to run `evaluation.py` and how it relies on `The_model.
 
 ## What `evaluation.py` does
 `evaluation.py` runs a full evaluation pipeline for selected dataset rows:
-- Loads source image, comparison image (pipline 2 output ), and `llm_edit` prompt.
+- Loads source image, comparison image (pipline 2 output), and `llm_edit` prompt.
 - Builds a generated image using the project pipeline.
 - comparison features in DINOv2 space.
 - Prints dictionary metrics .
