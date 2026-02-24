@@ -45,7 +45,7 @@ Coherence refinement (SD img2img):
 - `--cohere-seed` (default: `42`) random seed for reproducibility.
 
 
-## Setup
+# Setup
 
 Install dependencies:
 
@@ -61,7 +61,7 @@ curl -L -o taesd_encoder.pth https://raw.githubusercontent.com/madebyollin/taesd
 curl -L -o taesd_decoder.pth https://raw.githubusercontent.com/madebyollin/taesd/main/taesd_decoder.pth
 ```
 
-## Run evaluation
+# Run evaluation
 ```bash
 python evaluation.py
 ```
