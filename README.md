@@ -74,6 +74,15 @@ steps = 500
 ine_dict = run_eval(image_index=index, steps=steps, num_steps=num_steps)
 ```
 
+Explanation for line 162
+
+Instead of specifying a single index, the evaluation script supports running on a list of indices.
+When a list is provided, the script evaluates each sample sequentially and reports the average metrics across all selected samples.
+```python
+index = [123,124]
+num_steps = 450
+steps = 500
+```
 ## Output
 For each run, the script prints metrics and returns a dictionary with:
 - `cosine_our_src`
@@ -82,7 +91,7 @@ For each run, the script prints metrics and returns a dictionary with:
 - `l2_comp_src`
 - prompt and source/comparison URLs
 
-At the end, it prints average metrics across all selected indices(if puts more than 1 picture).
+At the end, it prints average metrics across all selected indices(if puts list of indices).
 
 The script also opens 5 preview images:
 - source image
