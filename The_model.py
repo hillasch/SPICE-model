@@ -142,47 +142,6 @@ def search_llm_edit_image(prompt: str, k: int = 1, show: bool = False):
     return top
 
 
-# --- Visualization helpers ---
-# def caption_image(image: Image.Image, title: str, caption: str = "", wrap: int = 48):
-#     """
-#     Add a caption strip under an image so the prompt is visible beside it.
-#     """
-#     img = image.convert("RGB").resize((IMAGE_SIZE, IMAGE_SIZE))
-#     font = ImageFont.load_default()
-#     wrapped_caption = textwrap.fill(caption, width=wrap) if caption else ""
-#
-#     full_text = title if title else ""
-#     if wrapped_caption:
-#         full_text = f"{full_text}\n{wrapped_caption}" if full_text else wrapped_caption
-#
-#     draw = ImageDraw.Draw(img)
-#     text_w, text_h = draw.multiline_textsize(full_text, font=font)
-#     pad = 6
-#     strip_h = text_h + 2 * pad if full_text else 0
-#
-#     out = Image.new("RGB", (img.width, img.height + strip_h), color=(24, 24, 24))
-#     out.paste(img, (0, 0))
-#     if full_text:
-#         draw = ImageDraw.Draw(out)
-#         draw.multiline_text((pad, img.height + pad), full_text, fill=(255, 255, 255), font=font)
-#     return out
-
-
-# def concat_horizontal(images):
-#     """Concatenate PIL images horizontally with padding."""
-#     if not images:
-#         raise ValueError("No images to concatenate")
-#     pad = 10
-#     width = sum(im.width for im in images) + pad * (len(images) + 1)
-#     height = max(im.height for im in images) + 2 * pad
-#     canvas = Image.new("RGB", (width, height), color=(16, 16, 16))
-#     x = pad
-#     for im in images:
-#         y = pad + (height - 2 * pad - im.height) // 2
-#         canvas.paste(im, (x, y))
-#         x += im.width + pad
-#     return canvas
-
 # Default hyperparameters
 DEFAULT_CSV = Path("dataset_cap_edit_only.csv")
 DEFAULT_SAVE_DIR = Path("gaussian_blend_outputs")
