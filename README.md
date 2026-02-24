@@ -7,7 +7,7 @@ This README explains how to run `evaluation.py` and how it relies on `The_model.
 - Loads source image, comparison image (pipline 2 output), and `llm_edit` prompt.
 - Builds a generated image using the project pipeline.
 - comparison features in DINOv2 space.
-- Prints dictionary metrics .
+- Prints dictionary that summary this instance.
 
 ## `The_model.py` flow 
 The evaluation script calls functions from `The_model.py` using the optimization pipeline.
