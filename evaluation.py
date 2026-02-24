@@ -158,30 +158,9 @@ list_our_cosinos_l2 = []
 list_comp_cosinos_l2 = []
 
 
-###########################
-indexes = [555]
-steps=12
-num_steps=12
-###########################
-
-
-counter = 0
-for idx in indexes:
-    counter += 1
-    print(f"_________Evaluating image index {idx} ({counter}/{len(indexes)})_________")
-    ine_dict = run_eval(image_index=idx, steps=steps, num_steps=num_steps)
-    print(f"url_comp: {ine_dict['url_comp']}")
-    print(f"url_src: {ine_dict['url_src']}")
-    # Collect scalar metrics for averaging later
-    list_our_cosinos.append(ine_dict["cosine_our_src"])
-    list_comp_cosinos.append(ine_dict["cosine_comp_src"])
-    list_our_cosinos_l2.append(ine_dict["l2_our_src"])
-    list_comp_cosinos_l2.append(ine_dict["l2_comp_src"])
-# if run for multiple images , remove the # and aggregate results (simple means)
-# Aggregate results (simple means)
-
-#print(f"Average cosine similarity between generated images and source images: {sum(list_our_cosinos) / len(list_our_cosinos):.4f}")
-#print(f"Average cosine similarity between comparison comp images and source images: {sum(list_comp_cosinos) / len(list_comp_cosinos):.4f}") 
-#print(f"Average L2 distance between generated images and source images: {sum(list_our_cosinos_l2) / len(list_our_cosinos_l2):.4f}")
-#print(f"Average L2 distance between comparison comp images and source images: {sum(list_comp_cosinos_l2) / len(list_comp_cosinos_l2):.4f}")
-print(f"Prompt from llm edit: {ine_dict['prompt']}")
+############################## Example evaluation run for one image index ##############################
+index = 2000
+num_steps = 450
+steps = 500
+ine_dict = run_eval(image_index=index, steps=steps, num_steps=num_steps)
+print(ine_dict)
