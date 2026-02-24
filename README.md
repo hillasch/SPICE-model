@@ -101,6 +101,8 @@ At the end, it prints average metrics across all selected indices(if puts list o
 | `l2_our_src` | Distance between generated image and source image | Lower |
 | `l2_comp_src` | Distance between baseline comparison image and source image | Lower |
 
+## DataPrep file
+The file takes the data from the paper repo and prepare it for our useage.
 ## Notes
 - First run may download model assets (DINOv2, Stable Diffusion, search embeddings).
 - GPU or Apple Silicon is recommended for reasonable runtime.
